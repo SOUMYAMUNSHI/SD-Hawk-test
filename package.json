@@ -1,0 +1,23 @@
+{
+  "name": "sd-hawk",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "workspaces": [
+    "frontend",
+    "backend",
+    "vision-service"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "packageManager": "npm@10.0.0",
+  "devDependencies": {
+    "turbo": "^2.10.4"
+  }
+}

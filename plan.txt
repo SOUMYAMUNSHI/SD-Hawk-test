@@ -1,0 +1,880 @@
+Build a **production-ready, full-stack AI surveillance platform** called **SD-Hawk**.
+
+# PROJECT OVERVIEW
+
+SD-Hawk is an AI-powered real-time surveillance and event intelligence platform.
+
+Unlike traditional CCTV systems that continuously record footage for humans to review later, SD-Hawk continuously watches camera feeds, understands what is happening using AI, filters out ordinary events, and creates meaningful event records. It sends notifications only when configured rules are satisfied.
+
+The system should support homes, stores, warehouses, apartment societies, schools, offices, exam halls, parking lots, and public spaces.
+
+Think of SD-Hawk as an intelligent security assistant that never sleeps.
+
+The application must be designed as a scalable SaaS-ready product but should work perfectly on a local machine during development.
+
+---
+
+# ARCHITECTURE
+
+Use **Monorepo Architecture**.
+
+```
+sd-hawk/
+
+│
+├── apps/
+│   ├── frontend/
+│   ├── backend/
+│   └── vision-service/
+│
+├── packages/
+│   ├── shared/
+│   ├── ui/
+│   ├── config/
+│   ├── types/
+│   └── utils/
+│
+├── docs/
+├── scripts/
+├── docker/
+├── .github/
+│
+├── package.json
+├── README.md
+└── turbo.json
+```
+
+Use **Turborepo**.
+
+Every application should be isolated but communicate cleanly.
+
+---
+
+# FRONTEND
+
+Framework
+
+* Next.js (App Router)
+* React
+* TypeScript
+
+Styling
+
+* Tailwind CSS
+* shadcn/ui
+* Framer Motion
+
+State
+
+* Zustand
+* TanStack Query
+
+Validation
+
+* React Hook Form
+* Zod
+
+Realtime
+
+* Socket.IO Client
+
+Create a beautiful modern dashboard inspired by enterprise security software.
+
+---
+
+# BACKEND
+
+Framework
+
+Node.js
+
+Express.js
+
+TypeScript
+
+Entry file:
+
+```
+server.js
+```
+
+The backend must follow professional MVC architecture.
+
+```
+backend/
+
+src/
+
+config/
+
+controllers/
+
+middleware/
+
+routes/
+
+models/
+
+services/
+
+repositories/
+
+validators/
+
+utils/
+
+helpers/
+
+events/
+
+sockets/
+
+jobs/
+
+database/
+
+auth/
+
+uploads/
+
+logs/
+
+constants/
+
+interfaces/
+
+types/
+
+schemas/
+
+cron/
+
+storage/
+
+app.ts
+
+server.js
+```
+
+Every module should be separated properly.
+
+No business logic inside routes.
+
+Controllers call services.
+
+Services communicate with repositories/models.
+
+Middleware handles validation, authentication, authorization, logging and errors.
+
+---
+
+# AUTHENTICATION
+
+Use JWT Authentication.
+
+Implement
+
+* Register
+* Login
+* Logout
+* Refresh Token
+* Forgot Password
+* Reset Password
+* Protected Routes
+* Role Based Access
+
+Roles
+
+Owner
+
+Admin
+
+Security
+
+Viewer
+
+Passwords must use bcrypt.
+
+---
+
+# DATABASE
+
+MongoDB
+
+Mongoose ODM
+
+Collections
+
+Users
+
+Cameras
+
+Events
+
+Alerts
+
+Rules
+
+Zones
+
+Snapshots
+
+Videos
+
+Notifications
+
+Logs
+
+Settings
+
+Sessions
+
+Reports
+
+AuditLogs
+
+Design proper schemas and relations.
+
+---
+
+# COMPUTER VISION SERVICE
+
+Create a separate Python microservice.
+
+Use
+
+Python
+
+FastAPI
+
+OpenCV
+
+Ultralytics YOLO
+
+NumPy
+
+The service receives frames and returns JSON detections.
+
+Example response
+
+```
+{
+  "objects":[
+      {
+        "type":"person",
+        "confidence":0.96,
+        "box":[120,220,320,620]
+      }
+  ]
+}
+```
+
+Communication between Express and Python should happen through REST APIs.
+
+Keep the vision service completely independent.
+
+---
+
+# AI SERVICE
+
+Integrate Google Gemini API.
+
+Gemini should be responsible for
+
+Scene Understanding
+
+Human-readable descriptions
+
+Threat summaries
+
+Daily reports
+
+Natural language event explanation
+
+Example
+
+Instead of
+
+Person Detected
+
+Return
+
+"Unknown individual wearing a dark jacket remained near the warehouse entrance for approximately one minute while repeatedly looking toward the building."
+
+Only call Gemini when a rule has already produced an event to reduce API usage.
+
+---
+
+# CAMERA SUPPORT
+
+Support multiple camera sources.
+
+USB Webcam
+
+Laptop Webcam
+
+IP Camera (RTSP)
+
+CCTV DVR
+
+Android Phone IP Webcam
+
+ESP32-CAM
+
+Video File
+
+Each camera should be manageable independently.
+
+---
+
+# REALTIME
+
+Use Socket.IO.
+
+Realtime updates should include
+
+Live events
+
+Camera status
+
+Detection overlays
+
+Dashboard notifications
+
+Statistics
+
+System health
+
+---
+
+# STORAGE
+
+Store locally.
+
+Images
+
+Snapshots
+
+Video Clips
+
+Logs
+
+Reports
+
+Media should be organized automatically.
+
+---
+
+# DASHBOARD
+
+Create a premium admin dashboard.
+
+Pages
+
+Dashboard
+
+Live Monitoring
+
+Camera Management
+
+Event Center
+
+Alert History
+
+Rule Builder
+
+Zone Manager
+
+Reports
+
+Analytics
+
+Users
+
+Roles
+
+Settings
+
+System Logs
+
+Profile
+
+Authentication
+
+Dashboard should include
+
+Cards
+
+Charts
+
+Statistics
+
+Activity Timeline
+
+Recent Events
+
+Camera Status
+
+Live Notifications
+
+System Health
+
+Dark Mode
+
+Responsive Design
+
+---
+
+# LIVE MONITORING
+
+Support
+
+Single Camera
+
+Grid View
+
+Fullscreen
+
+Bounding Boxes
+
+Detection Labels
+
+FPS Counter
+
+Confidence Scores
+
+Realtime AI Overlay
+
+---
+
+# EVENT CENTER
+
+This is the heart of SD-Hawk.
+
+Every detected event appears here before notifications are sent.
+
+Each event card contains
+
+Snapshot
+
+Camera
+
+Timestamp
+
+Detection
+
+Gemini Summary
+
+Confidence
+
+Severity
+
+Location
+
+Status
+
+Attached Video Clip
+
+Actions
+
+Approve
+
+Dismiss
+
+False Alarm
+
+Archive
+
+Mark Resolved
+
+Export
+
+---
+
+# EVENT HISTORY
+
+Provide advanced filtering.
+
+Date
+
+Camera
+
+Object Type
+
+Severity
+
+Zone
+
+Status
+
+Keyword Search
+
+Pagination
+
+Sorting
+
+Export CSV
+
+---
+
+# RULE BUILDER
+
+Create a visual rule builder.
+
+Allow rules like
+
+Person
+
+AND
+
+Back Gate
+
+AND
+
+Night
+
+AND
+
+Loitering > 60 seconds
+
+↓
+
+Critical Alert
+
+Support
+
+AND
+
+OR
+
+NOT
+
+Thresholds
+
+Time
+
+Confidence
+
+Cooldown
+
+Schedules
+
+Priority
+
+---
+
+# ZONE MANAGER
+
+Allow drawing polygons over camera frames.
+
+Examples
+
+Front Gate
+
+Cash Counter
+
+Warehouse
+
+Parking
+
+Exam Hall
+
+Restricted Area
+
+Every rule can reference zones.
+
+---
+
+# REPORTS
+
+Automatically generate
+
+Daily
+
+Weekly
+
+Monthly
+
+Reports should include
+
+Statistics
+
+AI Summary
+
+Charts
+
+Incident Count
+
+Detection Types
+
+False Alarm Rate
+
+---
+
+# ANALYTICS
+
+Create interactive charts.
+
+Alerts Per Day
+
+Events Per Camera
+
+Detection Categories
+
+Peak Hours
+
+Threat Distribution
+
+Camera Uptime
+
+Notification Success
+
+Storage Usage
+
+---
+
+# NOTIFICATIONS
+
+Initially support
+
+Nodemailer
+
+Formspree
+
+Design notification providers using an abstraction layer so future providers can be added.
+
+Future providers
+
+WhatsApp
+
+Telegram
+
+Slack
+
+Discord
+
+SMS
+
+Push Notifications
+
+---
+
+# LOGGING
+
+Maintain audit logs.
+
+User Login
+
+Rule Creation
+
+Camera Added
+
+Settings Changed
+
+Alert Sent
+
+Alert Dismissed
+
+AI Response
+
+API Errors
+
+System Events
+
+---
+
+# FILE STRUCTURE
+
+Use professional folder organization.
+
+Controllers
+
+Routes
+
+Middleware
+
+Services
+
+Repositories
+
+Models
+
+DTOs
+
+Validators
+
+Schemas
+
+Config
+
+Constants
+
+Helpers
+
+Utils
+
+Sockets
+
+Events
+
+Jobs
+
+Storage
+
+Uploads
+
+Logs
+
+Types
+
+Interfaces
+
+Shared
+
+Packages
+
+No messy code.
+
+Follow SOLID principles.
+
+---
+
+# CODING STANDARDS
+
+Use
+
+ESLint
+
+Prettier
+
+Environment Variables
+
+Centralized Config
+
+Reusable Components
+
+Dependency Injection where appropriate
+
+Error Boundaries
+
+Global Error Handler
+
+Centralized API Responses
+
+Typed APIs
+
+Reusable Hooks
+
+Reusable Services
+
+Reusable Utilities
+
+Strict TypeScript
+
+Async/Await
+
+Professional Comments
+
+Production-ready code.
+
+---
+
+# SECURITY
+
+JWT
+
+bcrypt
+
+Helmet
+
+CORS
+
+Rate Limiting
+
+Input Validation
+
+Mongo Sanitization
+
+XSS Protection
+
+Secure Headers
+
+Environment Secrets
+
+Authentication Middleware
+
+Authorization Middleware
+
+Audit Logging
+
+---
+
+# API DESIGN
+
+RESTful APIs.
+
+Use versioning.
+
+```
+/api/v1/
+```
+
+Organize endpoints by feature.
+
+---
+
+# UI STYLE
+
+Modern enterprise software.
+
+Inspired by
+
+Linear
+
+Vercel
+
+Notion
+
+Datadog
+
+CrowdStrike
+
+Ubiquiti UniFi
+
+Minimal
+
+Clean
+
+Dark-first
+
+Rounded cards
+
+Smooth animations
+
+Responsive
+
+Professional typography
+
+Excellent spacing
+
+Beautiful tables
+
+Powerful filtering
+
+Interactive charts
+
+---
+
+# PRODUCT EXPERIENCE
+
+The application should feel like a polished commercial product rather than a tutorial project.
+
+Everything should be modular, scalable, maintainable, reusable, and production-ready.
+
+Avoid placeholder implementations whenever possible.
+
+Generate realistic mock data where required.
+
+Use best software engineering practices throughout the project.
+
+The final result should resemble an enterprise-grade AI surveillance platform that could realistically be sold as a commercial SaaS or deployed locally for homes, businesses, educational institutions, warehouses, and public infrastructure.
