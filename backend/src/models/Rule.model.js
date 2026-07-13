@@ -2,6 +2,11 @@ import mongoose from 'mongoose';
 
 const ruleSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+      required: true,
+    },
     name: {
       type: String,
       required: [true, 'Please add a rule name (e.g., Nighttime Person Detection)'],

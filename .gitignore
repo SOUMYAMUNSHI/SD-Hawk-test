@@ -11,6 +11,10 @@ coverage/
 out/
 build/
 
+# Temp DB scripts
+seed.js
+*seed.js
+
 # Python / Vision Service
 vision-service/.venv/
 vision-service/__pycache__/
