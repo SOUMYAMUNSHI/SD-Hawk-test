@@ -12,13 +12,14 @@ export const generateSecurityAlert = async (rule, detection) => {
     You are SD-Hawk, an elite AI security system. 
     You just detected a security violation based on the user's custom rules.
     
-    Rule Violated: Alert when a "${rule.targetObject}" is seen.
+    Rule Violated: Alert when a "${rule.objectType}" is seen.
     Detection Details:
     - Object: ${detection.type}
     - Confidence: ${detection.confidence}%
     - Timestamp: ${new Date().toLocaleString()}
     
-    Write a very brief, punchy, and urgent 2-sentence security alert to email to the user. Do not use pleasantries. Be direct.
+    Write a very brief, punchy, and urgent 2-sentence security alert to email to the user. 
+    IMPORTANT: Refer to the detected object dynamically but forcefully (e.g., if it's a person, call them an "Unauthorized Person" or "Unknown Person" instead of just "a person" or "an undefined person"). Do not use pleasantries. Be direct.
   `;
 
   try {

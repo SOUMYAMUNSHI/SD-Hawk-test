@@ -3,6 +3,12 @@ import Rule from '../models/Rule.model.js';
 import Event from '../models/Event.model.js';
 import { generateSecurityAlert } from './ai.service.js';
 import { sendAlertEmail } from './email.service.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let isPolling = false;
 let pollingInterval = null;
@@ -57,12 +63,33 @@ export const startPolling = () => {
                   // 1. Generate AI Summary
                   const aiSummary = await generateSecurityAlert(rule, detection);
 
+                  // 1.5 Fetch Snapshot if rule requires it
+                  let snapshotUrl = 'unavailable_in_this_version';
+                  let localSnapshotPath = null;
+                  
+                  if (rule.includeSnapshot !== false) { // default true
+                    try {
+                      const snapRes = await fetch('http://127.0.0.1:8000/snapshot');
+                      if (snapRes.ok) {
+                         const buffer = await snapRes.arrayBuffer();
+                         const filename = `snap_${Date.now()}.jpg`;
+                         // public/snapshots is at backend/public/snapshots
+                         const publicDir = path.join(__dirname, '..', '..', 'public', 'snapshots');
+                         localSnapshotPath = path.join(publicDir, filename);
+                         await fs.promises.writeFile(localSnapshotPath, Buffer.from(buffer));
+                         snapshotUrl = `/snapshots/${filename}`;
+                      }
+                    } catch (e) {
+                      console.error('Failed to get snapshot:', e);
+                    }
+                  }
+
                   // 2. Log Event to DB
                   await Event.create({
                     camera: rule.camera,
                     ruleTriggered: rule._id,
                     confidence: detection.confidence,
-                    snapshotUrl: 'unavailable_in_this_version',
+                    snapshotUrl: snapshotUrl,
                     aiSummary: aiSummary
                   });
 
@@ -71,7 +98,8 @@ export const startPolling = () => {
                     await sendAlertEmail(
                       rule.user.email,
                       `Security Alert: ${rule.name}`,
-                      aiSummary
+                      aiSummary,
+                      localSnapshotPath
                     );
                   }
                 }

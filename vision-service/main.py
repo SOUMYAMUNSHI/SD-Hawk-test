@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from camera import camera_manager
 from detector import detector
@@ -81,3 +81,28 @@ def generate_frames():
 @app.get("/video_feed")
 def video_feed():
     return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+@app.get("/snapshot")
+def get_snapshot():
+    frame = camera_manager.read_frame()
+    if frame is None:
+        raise HTTPException(status_code=400, detail="No frame available")
+        
+    # Run detection to get boxes
+    detections = detector.detect(frame)["objects"]
+    
+    # Draw bounding boxes on the frame
+    for obj in detections:
+        x1, y1, x2, y2 = obj["box"]
+        label = f'{obj["type"]} {obj["confidence"]}'
+        
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
+        cv2.rectangle(frame, (x1, y1 - 20), (x1 + len(label)*10, y1), (255, 0, 255), -1)
+        cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        
+    # Encode frame to JPEG
+    ret, buffer = cv2.imencode('.jpg', frame)
+    if not ret:
+        raise HTTPException(status_code=500, detail="Failed to encode image")
+        
+    return Response(content=buffer.tobytes(), media_type="image/jpeg")

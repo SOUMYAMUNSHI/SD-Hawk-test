@@ -44,3 +44,7 @@ venv.bak/
 # OS Metadata
 .DS_Store
 Thumbs.db
+
+
+## Snapshots
+backend/public/snapshots/*

@@ -24,6 +24,11 @@ const ruleSchema = new mongoose.Schema(
       start: { type: String, default: '00:00' }, // HH:mm format
       end: { type: String, default: '23:59' },
     },
+    includeSnapshot: {
+      type: Boolean,
+      default: true,
+      description: 'Whether to attach a camera snapshot to the alert',
+    },
     severity: {
       type: String,
       enum: ['Low', 'Medium', 'Critical'],
