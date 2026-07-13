@@ -1,5 +1,6 @@
 import { io } from '../server.js';
 import Rule from '../models/Rule.model.js';
+import Camera from '../models/Camera.model.js';
 import Event from '../models/Event.model.js';
 import { generateSecurityAlert } from './ai.service.js';
 import { sendAlertEmail } from './email.service.js';
@@ -16,8 +17,6 @@ const lastAlertTime = new Map();
 
 export const initVisionService = () => {
   console.log('Vision polling service initialized.');
-
-  // Start polling automatically for now, but in production this should be toggled by the UI
   startPolling();
 };
 
@@ -42,38 +41,72 @@ export const startPolling = () => {
           });
 
           // Logic Engine: Check if detections violate any active rules
-          for (const detection of detections) {
-            // Find active rules targeting this object type (e.g., 'person', 'cell phone')
-            const brokenRules = await Rule.find({
-              objectType: detection.type,
-              isActive: true
-            }).populate('user', 'email name');
+          const activeRules = await Rule.find({ isActive: true }).populate('camera').populate('user', 'email name');
 
-            for (const rule of brokenRules) {
-              try {
+          for (const rule of activeRules) {
+            try {
+              // 1. Check if the camera exists and has AI enabled
+              if (!rule.camera || rule.camera.aiEnabled === false) {
+                continue;
+              }
+
+              // 2. Check time-based logic
+              const now = new Date();
+              const currentHour = now.getHours().toString().padStart(2, '0');
+              const currentMinute = now.getMinutes().toString().padStart(2, '0');
+              const currentTimeStr = `${currentHour}:${currentMinute}`;
+
+              const startStr = rule.timeRange?.start || '00:00';
+              const endStr = rule.timeRange?.end || '23:59';
+
+              let isWithinTime = false;
+              if (startStr <= endStr) {
+                // Normal range (e.g. 08:00 to 18:00)
+                isWithinTime = (currentTimeStr >= startStr && currentTimeStr <= endStr);
+              } else {
+                // Overnight range (e.g. 22:00 to 06:00)
+                isWithinTime = (currentTimeStr >= startStr || currentTimeStr <= endStr);
+              }
+
+              if (!isWithinTime) {
+                continue; // Skip this rule because it's outside the active time window
+              }
+
+              // 3. Evaluate Rule Type (Include vs Exclude)
+              const ruleType = rule.ruleType || 'Include';
+              let ruleViolatingDetection = null;
+
+              if (ruleType === 'Include') {
+                // Alert if the specific object IS detected
+                ruleViolatingDetection = detections.find(d => d.type === rule.objectType);
+              } else if (ruleType === 'Exclude') {
+                // Alert if ANY object that is NOT the specific object is detected
+                ruleViolatingDetection = detections.find(d => d.type !== rule.objectType);
+              }
+
+              if (ruleViolatingDetection) {
                 // Basic cooldown to prevent email spam (1 alert per rule per 60 seconds)
-                const now = Date.now();
                 const lastAlert = lastAlertTime.get(rule._id.toString()) || 0;
 
-                if (now - lastAlert > 60000) { // 60 seconds cooldown
-                  lastAlertTime.set(rule._id.toString(), now);
+                if (Date.now() - lastAlert > 60000) { // 60 seconds cooldown
+                  lastAlertTime.set(rule._id.toString(), Date.now());
 
                   console.log(`🚨 Rule Broken: ${rule.name}. Triggering AI Alert...`);
 
                   // 1. Generate AI Summary
-                  const aiSummary = await generateSecurityAlert(rule, detection);
+                  const aiSummary = await generateSecurityAlert(rule, ruleViolatingDetection);
 
                   // 1.5 Fetch Snapshot if rule requires it
                   let snapshotUrl = 'unavailable_in_this_version';
                   let localSnapshotPath = null;
                   
-                  if (rule.includeSnapshot !== false) { // default true
+                  if (rule.includeSnapshot !== false) {
                     try {
-                      const snapRes = await fetch('http://127.0.0.1:8000/snapshot');
+                      // We fetch the snapshot with boxes=1 for email attachments as requested
+                      const snapRes = await fetch('http://127.0.0.1:8000/snapshot?boxes=1');
                       if (snapRes.ok) {
                          const buffer = await snapRes.arrayBuffer();
                          const filename = `snap_${Date.now()}.jpg`;
-                         // public/snapshots is at backend/public/snapshots
                          const publicDir = path.join(__dirname, '..', '..', 'public', 'snapshots');
                          localSnapshotPath = path.join(publicDir, filename);
                          await fs.promises.writeFile(localSnapshotPath, Buffer.from(buffer));
@@ -86,9 +119,9 @@ export const startPolling = () => {
 
                   // 2. Log Event to DB
                   await Event.create({
-                    camera: rule.camera,
+                    camera: rule.camera._id,
                     ruleTriggered: rule._id,
-                    confidence: detection.confidence,
+                    confidence: ruleViolatingDetection.confidence,
                     snapshotUrl: snapshotUrl,
                     aiSummary: aiSummary
                   });
@@ -103,16 +136,15 @@ export const startPolling = () => {
                     );
                   }
                 }
-              } catch (err) {
-                console.error(`Error processing rule ${rule._id}:`, err);
               }
+            } catch (err) {
+              console.error(`Error processing rule ${rule._id}:`, err);
             }
           }
         }
       }
     } catch (error) {
       if (error.cause && error.cause.code === 'ECONNREFUSED') {
-         // Silently ignore if python is off
          io.emit('vision_status', { status: 'offline', message: 'Vision Service Offline' });
       } else {
          console.error('Vision Polling Error:', error);

@@ -2,7 +2,7 @@ import Rule from '../models/Rule.model.js';
 
 export const getRules = async (req, res) => {
   try {
-    const rules = await Rule.find({ user: req.user._id }).populate('cameraId', 'name');
+    const rules = await Rule.find({ user: req.user._id }).populate('camera', 'name status');
     res.json(rules);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -10,15 +10,19 @@ export const getRules = async (req, res) => {
 };
 
 export const createRule = async (req, res) => {
-  const { cameraId, targetObject, confidenceThreshold, action } = req.body;
+  const { name, camera, objectType, ruleType, timeRange, includeSnapshot, severity, isActive } = req.body;
 
   try {
     const rule = await Rule.create({
       user: req.user._id,
-      cameraId,
-      targetObject,
-      confidenceThreshold,
-      action
+      name,
+      camera,
+      objectType,
+      ruleType,
+      timeRange,
+      includeSnapshot,
+      severity,
+      isActive
     });
     
     res.status(201).json(rule);

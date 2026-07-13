@@ -17,10 +17,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Live Monitoring', href: '/live', icon: Cctv },
-  { name: 'Event Center', href: '/events', icon: ShieldAlert },
+  { name: 'Cameras', href: '/cameras', icon: Cctv },
   { name: 'Rule Builder', href: '/rules', icon: ListChecks },
-  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export default function DashboardLayout({ children }) {

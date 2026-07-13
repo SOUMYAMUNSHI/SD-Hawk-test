@@ -20,6 +20,12 @@ const ruleSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please specify the object type to detect (e.g., person, car)'],
     },
+    ruleType: {
+      type: String,
+      enum: ['Include', 'Exclude'],
+      default: 'Include',
+      description: 'Include: Alert ON objectType. Exclude: Alert on anything EXCEPT objectType.',
+    },
     timeRange: {
       start: { type: String, default: '00:00' }, // HH:mm format
       end: { type: String, default: '23:59' },

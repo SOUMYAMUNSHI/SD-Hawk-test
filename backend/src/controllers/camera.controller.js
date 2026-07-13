@@ -51,6 +51,13 @@ export const updateCamera = async (req, res) => {
       camera.source = req.body.source || camera.source;
       camera.type = req.body.type || camera.type;
       camera.status = req.body.status || camera.status;
+      
+      if (req.body.aiEnabled !== undefined) {
+        camera.aiEnabled = req.body.aiEnabled;
+      }
+      if (req.body.showBoundingBoxes !== undefined) {
+        camera.showBoundingBoxes = req.body.showBoundingBoxes;
+      }
 
       const updatedCamera = await camera.save();
       io.emit('camera_updated', updatedCamera);

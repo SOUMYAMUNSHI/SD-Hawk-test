@@ -9,6 +9,8 @@ export default function Dashboard() {
   const [apiStatus, setApiStatus] = useState({ loading: true, data: null, error: null });
   const [latestDetection, setLatestDetection] = useState(null);
 
+  const [camera, setCamera] = useState(null);
+
   useEffect(() => {
     // 1. Fetch Backend HTTP Health
     const fetchHealth = async () => {
@@ -22,6 +24,18 @@ export default function Dashboard() {
       }
     };
     fetchHealth();
+
+    // 1.5 Fetch Camera to get display settings
+    const fetchCamera = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/cameras');
+        const data = await res.json();
+        if (data.length > 0) setCamera(data[0]);
+      } catch (e) {
+        console.error('Failed to fetch cameras');
+      }
+    };
+    fetchCamera();
 
     // 2. Connect to WebSockets for live AI updates
     socket.connect();
@@ -111,7 +125,7 @@ export default function Dashboard() {
           
           <div className="aspect-video bg-black relative">
             <img 
-              src="http://127.0.0.1:8000/video_feed" 
+              src={`http://127.0.0.1:8000/video_feed${camera ? `?boxes=${camera.showBoundingBoxes ? '1' : '0'}` : ''}`} 
               alt="Live Camera Feed"
               className="w-full h-full object-cover"
               onError={(e) => {

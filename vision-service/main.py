@@ -46,26 +46,29 @@ def get_detections():
     detections = detector.detect(frame)
     return {"status": "success", "data": detections}
 
-def generate_frames():
+def generate_frames(boxes: int = 1):
     while True:
         frame = camera_manager.read_frame()
         if frame is None:
             continue
             
-        # Run detection to get boxes
-        detections = detector.detect(frame)["objects"]
-        
-        # Draw bounding boxes on the frame
-        for obj in detections:
-            x1, y1, x2, y2 = obj["box"]
-            label = f'{obj["type"]} {obj["confidence"]}'
+        # Run detection to get boxes if we need to draw them, or if we want to cache them? 
+        # Wait, the detection is also done for the backend polling. Here we only do it for drawing.
+        # But detector.detect is fast.
+        if boxes == 1:
+            detections = detector.detect(frame)["objects"]
             
-            # Draw rectangle
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
-            # Draw label background
-            cv2.rectangle(frame, (x1, y1 - 20), (x1 + len(label)*10, y1), (255, 0, 255), -1)
-            # Draw text
-            cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            # Draw bounding boxes on the frame
+            for obj in detections:
+                x1, y1, x2, y2 = obj["box"]
+                label = f'{obj["type"]} {obj["confidence"]}'
+                
+                # Draw rectangle
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
+                # Draw label background
+                cv2.rectangle(frame, (x1, y1 - 20), (x1 + len(label)*10, y1), (255, 0, 255), -1)
+                # Draw text
+                cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             
         # Encode frame to JPEG
         ret, buffer = cv2.imencode('.jpg', frame)
@@ -79,8 +82,8 @@ def generate_frames():
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
 @app.get("/video_feed")
-def video_feed():
-    return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+def video_feed(boxes: int = 1):
+    return StreamingResponse(generate_frames(boxes), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.get("/snapshot")
 def get_snapshot():

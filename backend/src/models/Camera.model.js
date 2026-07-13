@@ -26,6 +26,16 @@ const cameraSchema = new mongoose.Schema(
       enum: ['Online', 'Offline'],
       default: 'Offline',
     },
+    aiEnabled: {
+      type: Boolean,
+      default: true,
+      description: 'Toggle to enable/disable AI rules processing for this camera',
+    },
+    showBoundingBoxes: {
+      type: Boolean,
+      default: true,
+      description: 'Toggle to show/hide purple bounding boxes on live feed',
+    },
     location: {
       type: String,
       description: 'Physical location of the camera',
