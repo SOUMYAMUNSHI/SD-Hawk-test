@@ -48,3 +48,39 @@ export const deleteRule = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const updateRule = async (req, res) => {
+  try {
+    const rule = await Rule.findById(req.params.id);
+
+    if (rule) {
+      if (rule.user.toString() !== req.user._id.toString()) {
+        return res.status(401).json({ message: 'User not authorized' });
+      }
+
+      rule.name = req.body.name || rule.name;
+      rule.camera = req.body.camera || rule.camera;
+      rule.objectType = req.body.objectType || rule.objectType;
+      rule.ruleType = req.body.ruleType || rule.ruleType;
+      
+      if (req.body.timeRange) {
+        rule.timeRange.start = req.body.timeRange.start || rule.timeRange.start;
+        rule.timeRange.end = req.body.timeRange.end || rule.timeRange.end;
+      }
+      
+      if (req.body.includeSnapshot !== undefined) {
+        rule.includeSnapshot = req.body.includeSnapshot;
+      }
+      if (req.body.isActive !== undefined) {
+        rule.isActive = req.body.isActive;
+      }
+
+      const updatedRule = await rule.save();
+      res.json(updatedRule);
+    } else {
+      res.status(404).json({ message: 'Rule not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

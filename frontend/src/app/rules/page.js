@@ -2,13 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ListChecks, Trash2, Clock, Plus, Target, CheckSquare, XSquare, Camera } from 'lucide-react';
+import { ListChecks, Trash2, Clock, Plus, Target, Camera, Edit2 } from 'lucide-react';
+
+const COCO_CLASSES = [
+  "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+  "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+  "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
+  "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
+  "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
+  "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+  "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
+  "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote",
+  "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
+  "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+];
 
 export default function RulesPage() {
   const [rules, setRules] = useState([]);
   const [cameras, setCameras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState(null);
 
   const [newRule, setNewRule] = useState({
     name: '',
@@ -54,25 +68,53 @@ export default function RulesPage() {
     }
   };
 
-  const handleCreate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/rules', {
-        method: 'POST',
+      const url = editingRuleId ? `http://localhost:5000/api/rules/${editingRuleId}` : 'http://localhost:5000/api/rules';
+      const method = editingRuleId ? 'PUT' : 'POST';
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRule)
       });
+      
       if (res.ok) {
-        const created = await res.json();
-        // The API might not populate the camera immediately, so refetch
         fetchData();
-        setIsAdding(false);
+        closeForm();
       } else {
-        alert('Failed to create rule');
+        alert('Failed to save rule');
       }
     } catch (error) {
-      console.error('Create error:', error);
+      console.error('Save error:', error);
     }
+  };
+
+  const closeForm = () => {
+    setIsAdding(false);
+    setEditingRuleId(null);
+    setNewRule({
+      name: '',
+      camera: cameras.length > 0 ? cameras[0]._id : '',
+      objectType: 'person',
+      ruleType: 'Include',
+      timeRange: { start: '00:00', end: '23:59' },
+      includeSnapshot: true
+    });
+  };
+
+  const openEditForm = (rule) => {
+    setNewRule({
+      name: rule.name,
+      camera: rule.camera?._id || rule.camera,
+      objectType: rule.objectType,
+      ruleType: rule.ruleType,
+      timeRange: { start: rule.timeRange?.start || '00:00', end: rule.timeRange?.end || '23:59' },
+      includeSnapshot: rule.includeSnapshot
+    });
+    setEditingRuleId(rule._id);
+    setIsAdding(true);
   };
 
   return (
@@ -98,7 +140,7 @@ export default function RulesPage() {
           className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl"
         >
           <h2 className="text-xl font-semibold mb-4 border-b border-neutral-800 pb-2">Create New Rule</h2>
-          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             <div className="space-y-1">
               <label className="text-sm text-neutral-400">Rule Name</label>
@@ -116,8 +158,11 @@ export default function RulesPage() {
 
             <div className="space-y-1">
               <label className="text-sm text-neutral-400">Target Object</label>
-              <input required type="text" className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-white" 
+              <input required list="coco-classes" type="text" className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-white" 
                 value={newRule.objectType} onChange={e => setNewRule({...newRule, objectType: e.target.value.toLowerCase()})} placeholder="e.g. person, car, dog" />
+              <datalist id="coco-classes">
+                {COCO_CLASSES.map(c => <option key={c} value={c} />)}
+              </datalist>
             </div>
 
             <div className="space-y-1">
@@ -166,11 +211,16 @@ export default function RulesPage() {
               key={rule._id} 
               className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 relative"
             >
-              <button onClick={() => handleDelete(rule._id)} className="absolute top-4 right-4 text-neutral-500 hover:text-red-500 transition-colors">
-                <Trash2 size={20} />
-              </button>
+              <div className="absolute top-4 right-4 flex gap-2">
+                <button onClick={() => openEditForm(rule)} className="p-2 text-neutral-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors">
+                  <Edit2 size={18} />
+                </button>
+                <button onClick={() => handleDelete(rule._id)} className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+                  <Trash2 size={18} />
+                </button>
+              </div>
 
-              <h2 className="text-xl font-bold text-white mb-1 pr-8">{rule.name}</h2>
+              <h2 className="text-xl font-bold text-white mb-1 pr-16">{rule.name}</h2>
               <div className="flex items-center gap-2 text-sm text-neutral-400 mb-4">
                 <Camera size={14} /> 
                 {/* Fallback to 'Unknown' if populate failed or camera was deleted */}

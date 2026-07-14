@@ -47,6 +47,16 @@ export default function CamerasPage() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this camera? All attached rules will also be deleted!')) return;
+    try {
+      await fetch(`http://localhost:5000/api/cameras/${id}`, { method: 'DELETE' });
+      setCameras(cameras.filter(c => c._id !== id));
+    } catch (error) {
+      console.error('Failed to delete camera:', error);
+    }
+  };
+
   const toggleSetting = async (camera, setting) => {
     try {
       const updatedValue = !camera[setting];
@@ -154,9 +164,14 @@ export default function CamerasPage() {
                     <span className="text-xs text-neutral-500 font-mono uppercase tracking-wider">{camera.type} • {camera.status}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1 bg-neutral-950 rounded-full border border-neutral-800">
-                  <div className={`w-2 h-2 rounded-full ${camera.status === 'Online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-                  <span className="text-xs text-neutral-400 font-medium">LIVE</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-neutral-950 rounded-full border border-neutral-800">
+                    <div className={`w-2 h-2 rounded-full ${camera.status === 'Online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                    <span className="text-xs text-neutral-400 font-medium">LIVE</span>
+                  </div>
+                  <button onClick={() => handleDelete(camera._id)} className="p-1.5 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                  </button>
                 </div>
               </div>
 

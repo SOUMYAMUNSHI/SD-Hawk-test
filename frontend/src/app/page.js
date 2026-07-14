@@ -10,6 +10,9 @@ export default function Dashboard() {
   const [latestDetection, setLatestDetection] = useState(null);
 
   const [camera, setCamera] = useState(null);
+  const [cameras, setCameras] = useState([]);
+
+  const [selectedCamera, setSelectedCamera] = useState(null);
 
   useEffect(() => {
     // 1. Fetch Backend HTTP Health
@@ -30,6 +33,7 @@ export default function Dashboard() {
       try {
         const res = await fetch('http://localhost:5000/api/cameras');
         const data = await res.json();
+        setCameras(data);
         if (data.length > 0) setCamera(data[0]);
       } catch (e) {
         console.error('Failed to fetch cameras');
@@ -63,8 +67,8 @@ export default function Dashboard() {
         <p className="text-neutral-400 mt-1">Monitor your connected cameras and AI detections in real-time.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
+      {/* Top Status Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* API Status Card */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -103,45 +107,7 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Live Video Feed Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden relative"
-        >
-          <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20 text-blue-500">
-                <Cctv size={20} />
-              </div>
-              <h2 className="font-semibold">Live Camera (0)</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-              <span className="text-xs text-neutral-400 font-medium">LIVE</span>
-            </div>
-          </div>
-          
-          <div className="aspect-video bg-black relative">
-            <img 
-              src={`http://127.0.0.1:8000/video_feed${camera ? `?boxes=${camera.showBoundingBoxes ? '1' : '0'}` : ''}`} 
-              alt="Live Camera Feed"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
-            />
-            {/* Fallback if Python server is down */}
-            <div className="absolute inset-0 hidden items-center justify-center text-neutral-600 flex-col gap-2">
-              <Cctv size={48} />
-              <p className="text-sm">Camera Offline</p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* AI Watchguard Card (Flashes on new detection) */}
+        {/* AI Watchguard Card */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0, backgroundColor: latestDetection ? '#4c1d95' : '#171717' }}
@@ -185,8 +151,108 @@ export default function Dashboard() {
             </AnimatePresence>
           </div>
         </motion.div>
-
       </div>
+
+      <h2 className="text-2xl font-bold text-white mt-8 mb-4">Live Camera Feeds ({cameras.length})</h2>
+      
+      {/* Cameras Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cameras.map((cam, index) => (
+          <motion.div 
+            key={cam._id}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden relative group"
+          >
+            <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/20 text-blue-500">
+                  <Cctv size={20} />
+                </div>
+                <h2 className="font-semibold">{cam.name}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${cam.status === 'Online' ? 'bg-red-500 animate-pulse' : 'bg-neutral-500'}`}></div>
+                <span className="text-xs text-neutral-400 font-medium">LIVE</span>
+              </div>
+            </div>
+            
+            <div className="aspect-video bg-black relative">
+              <img 
+                src={`http://127.0.0.1:8000/video_feed?boxes=${cam.showBoundingBoxes ? '1' : '0'}`} 
+                alt={`Feed for ${cam.name}`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div className="absolute inset-0 hidden items-center justify-center text-neutral-600 flex-col gap-2">
+                <Cctv size={48} />
+                <p className="text-sm">Camera Offline</p>
+              </div>
+              
+              {/* Expand Overlay */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                <button 
+                  onClick={() => setSelectedCamera(cam)}
+                  className="px-4 py-2 bg-white text-black font-semibold rounded-lg shadow-lg hover:scale-105 transition-transform"
+                >
+                  Expand View
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+        {cameras.length === 0 && !apiStatus.loading && (
+          <div className="col-span-full p-8 border border-dashed border-neutral-800 rounded-2xl text-center text-neutral-500">
+            No cameras found. Add one in the Camera Manager.
+          </div>
+        )}
+      </div>
+
+      {/* Fullscreen Camera Modal */}
+      <AnimatePresence>
+        {selectedCamera && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 lg:p-12"
+          >
+            <div className="w-full max-w-7xl bg-neutral-950 border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative h-[80vh]">
+              <div className="p-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-900">
+                <div className="flex items-center gap-3">
+                  <Cctv className="text-emerald-500" />
+                  <h2 className="font-bold text-xl">{selectedCamera.name}</h2>
+                </div>
+                <button 
+                  onClick={() => setSelectedCamera(null)}
+                  className="p-2 bg-neutral-800 hover:bg-red-500 text-white rounded-lg transition-colors"
+                >
+                  Close View
+                </button>
+              </div>
+              <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
+                <img 
+                  src={`http://127.0.0.1:8000/video_feed?boxes=${selectedCamera.showBoundingBoxes ? '1' : '0'}`} 
+                  alt="Expanded Feed"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="absolute inset-0 hidden items-center justify-center text-neutral-600 flex-col gap-2">
+                  <Cctv size={64} />
+                  <p className="text-lg">Camera Offline or Disconnected</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

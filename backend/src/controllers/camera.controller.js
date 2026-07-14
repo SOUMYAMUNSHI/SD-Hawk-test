@@ -23,7 +23,7 @@ export const createCamera = async (req, res) => {
     const camera = await Camera.create({
       user: req.user._id,
       name,
-      source,
+      streamUrl: source || '0', // Mapping source to streamUrl as expected by the Schema
       type
     });
     
@@ -83,6 +83,15 @@ export const deleteCamera = async (req, res) => {
       }
 
       await camera.deleteOne();
+      
+      // Cascade delete attached rules
+      try {
+        const Rule = (await import('../models/Rule.model.js')).default;
+        await Rule.deleteMany({ camera: req.params.id });
+      } catch(err) {
+        console.error("Failed to delete attached rules", err);
+      }
+
       io.emit('camera_deleted', req.params.id);
       res.json({ message: 'Camera removed' });
     } else {
