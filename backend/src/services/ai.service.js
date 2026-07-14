@@ -36,3 +36,35 @@ export const generateSecurityAlert = async (rule, detection) => {
     return `SD-Hawk Security Alert: A ${detection.type} was detected.`; // Fallback
   }
 };
+export const evaluateCustomPrompt = async (base64Image, customPrompt) => {
+  if (!groq) {
+    console.warn('Groq API Key is missing. Skipping AI Vision evaluation.');
+    return { alert: true, reason: 'Groq API Key missing. Falling back to True.' };
+  }
+
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: `You are an elite AI security system monitoring a camera feed. Answer the following question based ONLY on the image provided: "${customPrompt}". You MUST respond in pure JSON format like this: {"alert": true/false, "reason": "brief explanation"}` },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+          ]
+        }
+      ],
+      model: 'llama-3.2-90b-vision-preview',
+      temperature: 0.2,
+      max_tokens: 150,
+    });
+
+    const responseText = chatCompletion.choices[0]?.message?.content || '{}';
+    // Clean up response if the model returned markdown code blocks
+    const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    return JSON.parse(jsonStr);
+  } catch (error) {
+    console.error('Groq Vision AI Error:', error);
+    return { alert: true, reason: 'Error evaluating vision model. Defaulting to alert.' };
+  }
+};

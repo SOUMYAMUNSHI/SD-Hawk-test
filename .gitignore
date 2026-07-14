@@ -21,6 +21,8 @@ vision-service/__pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pt
+*.onnx
 .Python
 env/
 venv/

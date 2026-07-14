@@ -2,7 +2,7 @@ import { io } from '../server.js';
 import Rule from '../models/Rule.model.js';
 import Camera from '../models/Camera.model.js';
 import Event from '../models/Event.model.js';
-import { generateSecurityAlert } from './ai.service.js';
+import { generateSecurityAlert, evaluateCustomPrompt } from './ai.service.js';
 import { sendAlertEmail } from './email.service.js';
 import fs from 'fs';
 import path from 'path';
@@ -15,9 +15,46 @@ let isPolling = false;
 let pollingInterval = null;
 const lastAlertTime = new Map();
 
-export const initVisionService = () => {
+export const initVisionService = async () => {
   console.log('Vision polling service initialized.');
+  
+  let synced = false;
+  let attempts = 0;
+  while (!synced && attempts < 15) {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/sync_cameras', { method: 'POST', body: '{}' });
+      // If we get a response, Python is up!
+      await syncCamerasToPython();
+      synced = true;
+    } catch (e) {
+      console.log('Waiting for Python Vision Service to start (this takes a few seconds)...');
+      attempts++;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+
+  if (!synced) {
+     console.error('CRITICAL: Could not reach Python Vision Service after 30 seconds.');
+  }
+
   startPolling();
+};
+
+export const syncCamerasToPython = async () => {
+  try {
+    const cameras = await Camera.find();
+    const payload = cameras.map(c => ({ id: c._id.toString(), source: c.streamUrl || '0' }));
+    const res = await fetch('http://127.0.0.1:8000/sync_cameras', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cameras: payload })
+    });
+    if (res.ok) {
+      console.log('Successfully synced cameras to Vision Service');
+    }
+  } catch (error) {
+    console.error('Failed to sync cameras to Vision Service:', error.message);
+  }
 };
 
 export const startPolling = () => {
@@ -31,79 +68,83 @@ export const startPolling = () => {
       const data = await response.json();
 
       if (data && data.status === 'success') {
-        const detections = data.data.objects; // Array of {type, confidence, box}
+        const activeRules = await Rule.find({ isActive: true }).populate('camera').populate('user', 'email name');
 
-        if (detections.length > 0) {
-          // Emit the detections to all connected frontend clients
-          io.emit('new_detection', {
-            timestamp: new Date().toISOString(),
-            objects: detections
-          });
+        // data.data is a dict of { [camera_id]: [objects] }
+        for (const [cameraId, detections] of Object.entries(data.data)) {
+          if (detections.length > 0) {
+            io.emit('new_detection', {
+              cameraId: cameraId,
+              timestamp: new Date().toISOString(),
+              objects: detections
+            });
+          }
 
-          // Logic Engine: Check if detections violate any active rules
-          const activeRules = await Rule.find({ isActive: true }).populate('camera').populate('user', 'email name');
+          // Logic Engine: Filter rules for this specific camera
+          const cameraRules = activeRules.filter(r => r.camera && r.camera._id.toString() === cameraId);
 
-          for (const rule of activeRules) {
+          for (const rule of cameraRules) {
             try {
-              // 1. Check if the camera exists and has AI enabled
-              if (!rule.camera || rule.camera.aiEnabled === false) {
-                continue;
-              }
+              if (rule.camera.aiEnabled === false) continue;
 
               // 2. Check time-based logic
               const now = new Date();
               const currentHour = now.getHours().toString().padStart(2, '0');
               const currentMinute = now.getMinutes().toString().padStart(2, '0');
               const currentTimeStr = `${currentHour}:${currentMinute}`;
-
               const startStr = rule.timeRange?.start || '00:00';
               const endStr = rule.timeRange?.end || '23:59';
 
               let isWithinTime = false;
               if (startStr <= endStr) {
-                // Normal range (e.g. 08:00 to 18:00)
                 isWithinTime = (currentTimeStr >= startStr && currentTimeStr <= endStr);
               } else {
-                // Overnight range (e.g. 22:00 to 06:00)
                 isWithinTime = (currentTimeStr >= startStr || currentTimeStr <= endStr);
               }
+              if (!isWithinTime) continue;
 
-              if (!isWithinTime) {
-                continue; // Skip this rule because it's outside the active time window
+              // 3. Filter detections by Virtual Trigger Zone
+              let validDetections = detections;
+              if (rule.triggerZone && rule.triggerZone.width > 0) {
+                const zx1 = rule.triggerZone.x;
+                const zy1 = rule.triggerZone.y;
+                const zx2 = zx1 + rule.triggerZone.width;
+                const zy2 = zy1 + rule.triggerZone.height;
+
+                validDetections = detections.filter(d => {
+                  if (!d.nbox) return true; // fallback if no nbox
+                  const [ox1, oy1, ox2, oy2] = d.nbox;
+                  return ox1 < zx2 && ox2 > zx1 && oy1 < zy2 && oy2 > zy1;
+                });
               }
 
-              // 3. Evaluate Rule Type (Include vs Exclude)
+              // 4. Evaluate Rule Type
               const ruleType = rule.ruleType || 'Include';
               let ruleViolatingDetection = null;
 
               if (ruleType === 'Include') {
-                // Alert if the specific object IS detected
-                ruleViolatingDetection = detections.find(d => d.type === rule.objectType);
+                ruleViolatingDetection = validDetections.find(d => d.type === rule.objectType);
               } else if (ruleType === 'Exclude') {
-                // Alert if ANY object that is NOT the specific object is detected
-                ruleViolatingDetection = detections.find(d => d.type !== rule.objectType);
+                if (validDetections.length > 0) {
+                  ruleViolatingDetection = validDetections.find(d => d.type !== rule.objectType);
+                }
+              } else if (ruleType === 'AI Custom') {
+                if (validDetections.length > 0) {
+                  ruleViolatingDetection = validDetections[0]; // Any object crossing triggers Groq evaluation
+                }
               }
 
               if (ruleViolatingDetection) {
-                // Basic cooldown to prevent email spam (1 alert per rule per 60 seconds)
                 const lastAlert = lastAlertTime.get(rule._id.toString()) || 0;
-
-                if (Date.now() - lastAlert > 60000) { // 60 seconds cooldown
-                  lastAlertTime.set(rule._id.toString(), Date.now());
-
-                  console.log(`🚨 Rule Broken: ${rule.name}. Triggering AI Alert...`);
-
-                  // 1. Generate AI Summary
-                  const aiSummary = await generateSecurityAlert(rule, ruleViolatingDetection);
-
-                  // 1.5 Fetch Snapshot if rule requires it
-                  let snapshotUrl = 'unavailable_in_this_version';
+                
+                if (Date.now() - lastAlert > 60000) { 
                   let localSnapshotPath = null;
-                  
-                  if (rule.includeSnapshot !== false) {
+                  let snapshotUrl = 'unavailable_in_this_version';
+
+                  // Always fetch snapshot if AI Custom or if includeSnapshot is true
+                  if (rule.includeSnapshot !== false || ruleType === 'AI Custom') {
                     try {
-                      // We fetch the snapshot with boxes=1 for email attachments as requested
-                      const snapRes = await fetch('http://127.0.0.1:8000/snapshot?boxes=1');
+                      const snapRes = await fetch(`http://127.0.0.1:8000/snapshot?camera_id=${cameraId}&boxes=1`);
                       if (snapRes.ok) {
                          const buffer = await snapRes.arrayBuffer();
                          const filename = `snap_${Date.now()}.jpg`;
@@ -117,7 +158,28 @@ export const startPolling = () => {
                     }
                   }
 
-                  // 2. Log Event to DB
+                  let aiSummary = '';
+                  
+                  if (ruleType === 'AI Custom') {
+                    if (!localSnapshotPath) {
+                      console.warn('Cannot run AI Custom rule without a snapshot. Skipping.');
+                      continue;
+                    }
+                    const base64Image = fs.readFileSync(localSnapshotPath, { encoding: 'base64' });
+                    const groqRes = await evaluateCustomPrompt(base64Image, rule.customPrompt);
+                    
+                    if (!groqRes.alert) {
+                       continue; // Groq says no issue, don't alert
+                    }
+                    aiSummary = `SD-Hawk Vision AI: ${groqRes.reason}`;
+                  } else {
+                    aiSummary = await generateSecurityAlert(rule, ruleViolatingDetection);
+                  }
+
+                  // Update cooldown because an alert is firing
+                  lastAlertTime.set(rule._id.toString(), Date.now());
+                  console.log(`🚨 Rule Broken: ${rule.name}. Triggering Alert...`);
+
                   await Event.create({
                     camera: rule.camera._id,
                     ruleTriggered: rule._id,
@@ -126,7 +188,6 @@ export const startPolling = () => {
                     aiSummary: aiSummary
                   });
 
-                  // 3. Send Email
                   if (rule.user && rule.user.email) {
                     await sendAlertEmail(
                       rule.user.email,

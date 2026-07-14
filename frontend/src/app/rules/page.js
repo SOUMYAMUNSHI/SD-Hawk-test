@@ -23,12 +23,18 @@ export default function RulesPage() {
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState(null);
+  const [isDrawingZone, setIsDrawingZone] = useState(false);
+
+  const [drawStart, setDrawStart] = useState(null);
+  const [drawCurrent, setDrawCurrent] = useState(null);
 
   const [newRule, setNewRule] = useState({
     name: '',
     camera: '',
     objectType: 'person',
     ruleType: 'Include',
+    customPrompt: '',
+    triggerZone: { x: 0, y: 0, width: 0, height: 0 },
     timeRange: { start: '00:00', end: '23:59' },
     includeSnapshot: true
   });
@@ -169,9 +175,42 @@ export default function RulesPage() {
               <label className="text-sm text-neutral-400">Rule Type</label>
               <select className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-white"
                 value={newRule.ruleType} onChange={e => setNewRule({...newRule, ruleType: e.target.value})}>
-                <option value="Include">Alert ON this object</option>
-                <option value="Exclude">Alert on ANYTHING EXCEPT this object</option>
+                <option value="Include">Basic: Alert ON this object</option>
+                <option value="Exclude">Basic: Alert on ANYTHING EXCEPT this object</option>
+                <option value="AI Custom">Advanced: AI Custom Prompt</option>
               </select>
+            </div>
+
+            {newRule.ruleType === 'AI Custom' && (
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-sm text-neutral-400 text-purple-400 font-semibold flex items-center gap-2">
+                  <Target size={16} /> Groq Vision Custom Prompt
+                </label>
+                <textarea required className="w-full bg-neutral-950 border border-purple-500/30 focus:border-purple-500 rounded p-3 text-white min-h-[80px]" 
+                  value={newRule.customPrompt || ''} 
+                  onChange={e => setNewRule({...newRule, customPrompt: e.target.value})} 
+                  placeholder="e.g. Is the person picking up an item without paying?" />
+              </div>
+            )}
+
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-sm text-neutral-400 flex justify-between">
+                Virtual Trigger Zone 
+                <span className="text-xs text-emerald-500 cursor-pointer" onClick={() => setIsDrawingZone(true)}>
+                  + Draw Zone on Camera
+                </span>
+              </label>
+              {newRule.triggerZone?.width ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-2 rounded text-sm flex items-center justify-between">
+                  Zone set: [{(newRule.triggerZone.x*100).toFixed(1)}%, {(newRule.triggerZone.y*100).toFixed(1)}%]
+                  <button type="button" onClick={() => setNewRule({...newRule, triggerZone: {}})} className="hover:text-red-400"><Trash2 size={14}/></button>
+                </div>
+              ) : (
+                <div className="bg-neutral-950 border border-neutral-800 p-2 rounded text-sm text-neutral-500 flex justify-between items-center">
+                  Full screen trigger (default)
+                  <button type="button" onClick={() => setIsDrawingZone(true)} className="bg-neutral-800 px-2 py-1 rounded text-white hover:bg-neutral-700">Draw</button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -250,6 +289,101 @@ export default function RulesPage() {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+      {/* Fullscreen Zone Drawer Modal */}
+      {isDrawingZone && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 lg:p-12 select-none">
+          <div className="w-full max-w-6xl bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative h-[85vh]">
+            
+            <div className="p-4 border-b border-neutral-800 flex flex-wrap items-center justify-between bg-neutral-950">
+              <div>
+                <h2 className="font-bold text-xl text-white">Draw Virtual Trigger Zone</h2>
+                <p className="text-sm text-neutral-400">Click and drag over the video feed to draw the trigger area. Objects must intersect this area to trigger the rule.</p>
+              </div>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setIsDrawingZone(false)}
+                  className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (drawStart && drawCurrent) {
+                      const x = Math.min(drawStart.x, drawCurrent.x);
+                      const y = Math.min(drawStart.y, drawCurrent.y);
+                      const width = Math.abs(drawStart.x - drawCurrent.x);
+                      const height = Math.abs(drawStart.y - drawCurrent.y);
+                      setNewRule({...newRule, triggerZone: { x, y, width, height }});
+                    }
+                    setIsDrawingZone(false);
+                    setDrawStart(null);
+                    setDrawCurrent(null);
+                  }}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black rounded-lg transition-colors font-bold"
+                >
+                  Save Zone
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 bg-black relative overflow-hidden cursor-crosshair group"
+              onMouseDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+                setDrawStart({ x, y });
+                setDrawCurrent({ x, y });
+              }}
+              onMouseMove={(e) => {
+                if (!drawStart) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                setDrawCurrent({ x, y });
+              }}
+              onMouseUp={() => {
+                // Done dragging
+              }}
+              onMouseLeave={() => {
+                // Done dragging
+              }}
+            >
+              <img 
+                src={`http://127.0.0.1:8000/video_feed?camera_id=${newRule.camera}&boxes=0`} 
+                alt="Camera Feed"
+                className="w-full h-full object-fill pointer-events-none"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div className="absolute inset-0 hidden items-center justify-center text-neutral-600 flex-col gap-2 bg-neutral-900 pointer-events-none">
+                <Camera size={64} />
+                <p className="text-lg">Camera Offline or Disconnected</p>
+              </div>
+              
+              {/* Grid overlay for guidance */}
+              <div className="absolute inset-0 border border-neutral-800/30 grid grid-cols-3 grid-rows-3 pointer-events-none">
+                {[...Array(9)].map((_,i) => <div key={i} className="border border-neutral-800/10"></div>)}
+              </div>
+
+              {/* The Drawn Rectangle */}
+              {drawStart && drawCurrent && (
+                <div className="pointer-events-none" style={{
+                  position: 'absolute',
+                  left: `${Math.min(drawStart.x, drawCurrent.x) * 100}%`,
+                  top: `${Math.min(drawStart.y, drawCurrent.y) * 100}%`,
+                  width: `${Math.abs(drawStart.x - drawCurrent.x) * 100}%`,
+                  height: `${Math.abs(drawStart.y - drawCurrent.y) * 100}%`,
+                  border: '2px solid #10b981',
+                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                  boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)'
+                }}></div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

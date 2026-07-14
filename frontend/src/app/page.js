@@ -180,7 +180,7 @@ export default function Dashboard() {
             
             <div className="aspect-video bg-black relative">
               <img 
-                src={`http://127.0.0.1:8000/video_feed?boxes=${cam.showBoundingBoxes ? '1' : '0'}`} 
+                src={`http://127.0.0.1:8000/video_feed?camera_id=${cam._id}&boxes=${cam.showBoundingBoxes ? '1' : '0'}`} 
                 alt={`Feed for ${cam.name}`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -236,7 +236,7 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
                 <img 
-                  src={`http://127.0.0.1:8000/video_feed?boxes=${selectedCamera.showBoundingBoxes ? '1' : '0'}`} 
+                  src={`http://127.0.0.1:8000/video_feed?camera_id=${selectedCamera._id}&boxes=${selectedCamera.showBoundingBoxes ? '1' : '0'}`} 
                   alt="Expanded Feed"
                   className="w-full h-full object-contain"
                   onError={(e) => {

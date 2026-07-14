@@ -5,105 +5,95 @@ from camera import camera_manager
 from detector import detector
 import cv2
 
-app = FastAPI(title="SD-Hawk Vision Service")
+import time
 
-# Auto-start camera 0 on boot
-@app.on_event("startup")
-def startup_event():
-    print("Auto-starting camera 0 for live testing...")
-    camera_manager.start(0)
+app = FastAPI(title="SD-Hawk Vision Service")
 
 @app.on_event("shutdown")
 def shutdown_event():
-    camera_manager.stop()
+    camera_manager.stop_all()
 
-class CameraSourceRequest(BaseModel):
-    source: str | int = 0
+class CameraSyncRequest(BaseModel):
+    cameras: list[dict] # list of {"id": str, "source": str}
 
 @app.get("/health")
 def health_check():
     return {"status": "success", "message": "Vision Service is running"}
 
-@app.post("/camera/start")
-def start_camera(req: CameraSourceRequest):
-    success = camera_manager.start(req.source)
-    if not success:
-        raise HTTPException(status_code=400, detail="Failed to start camera")
-    return {"status": "success", "message": f"Started capturing from {req.source}"}
-
-@app.post("/camera/stop")
-def stop_camera():
-    camera_manager.stop()
-    return {"status": "success", "message": "Camera stopped"}
+@app.post("/sync_cameras")
+def sync_cameras(req: CameraSyncRequest):
+    # Stop cameras that are not in the list
+    new_ids = [c["id"] for c in req.cameras]
+    for cid in camera_manager.get_all_camera_ids():
+        if cid not in new_ids:
+            camera_manager.stop(cid)
+            
+    # Start new cameras
+    for c in req.cameras:
+        if c["id"] not in camera_manager.get_all_camera_ids():
+            camera_manager.start(c["id"], c["source"])
+            
+    return {"status": "success", "message": "Cameras synchronized", "active": camera_manager.get_all_camera_ids()}
 
 @app.get("/detect")
 def get_detections():
-    frame = camera_manager.read_frame()
-    
-    if frame is None:
-        return {"status": "error", "message": "No frame available. Is the camera started?"}
-        
-    detections = detector.detect(frame)
-    return {"status": "success", "data": detections}
+    # Detect objects on ALL active cameras and return {camera_id: [objects]}
+    results = {}
+    for cid in camera_manager.get_all_camera_ids():
+        frame = camera_manager.read_frame(cid)
+        if frame is not None:
+            results[cid] = detector.detect(frame)["objects"]
+        else:
+            results[cid] = []
+    return {"status": "success", "data": results}
 
-def generate_frames(boxes: int = 1):
+def generate_frames(camera_id: str, boxes: int = 1):
     while True:
-        frame = camera_manager.read_frame()
+        frame = camera_manager.read_frame(camera_id)
         if frame is None:
+            time.sleep(0.1)
             continue
             
-        # Run detection to get boxes if we need to draw them, or if we want to cache them? 
-        # Wait, the detection is also done for the backend polling. Here we only do it for drawing.
-        # But detector.detect is fast.
         if boxes == 1:
             detections = detector.detect(frame)["objects"]
-            
-            # Draw bounding boxes on the frame
             for obj in detections:
                 x1, y1, x2, y2 = obj["box"]
                 label = f'{obj["type"]} {obj["confidence"]}'
-                
-                # Draw rectangle
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
-                # Draw label background
                 cv2.rectangle(frame, (x1, y1 - 20), (x1 + len(label)*10, y1), (255, 0, 255), -1)
-                # Draw text
                 cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             
-        # Encode frame to JPEG
         ret, buffer = cv2.imencode('.jpg', frame)
         if not ret:
+            time.sleep(0.1)
             continue
             
         frame_bytes = buffer.tobytes()
-        
-        # Yield in multipart format for MJPEG stream
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        time.sleep(0.033) # roughly 30fps
 
 @app.get("/video_feed")
-def video_feed(boxes: int = 1):
-    return StreamingResponse(generate_frames(boxes), media_type="multipart/x-mixed-replace; boundary=frame")
+def video_feed(camera_id: str, boxes: int = 1):
+    if camera_id not in camera_manager.get_all_camera_ids():
+        raise HTTPException(status_code=404, detail="Camera not found or not active")
+    return StreamingResponse(generate_frames(camera_id, boxes), media_type="multipart/x-mixed-replace; boundary=frame")
 
 @app.get("/snapshot")
-def get_snapshot():
-    frame = camera_manager.read_frame()
+def get_snapshot(camera_id: str, boxes: int = 1):
+    frame = camera_manager.read_frame(camera_id)
     if frame is None:
-        raise HTTPException(status_code=400, detail="No frame available")
+        raise HTTPException(status_code=400, detail="No frame available for this camera")
         
-    # Run detection to get boxes
-    detections = detector.detect(frame)["objects"]
-    
-    # Draw bounding boxes on the frame
-    for obj in detections:
-        x1, y1, x2, y2 = obj["box"]
-        label = f'{obj["type"]} {obj["confidence"]}'
+    if boxes == 1:
+        detections = detector.detect(frame)["objects"]
+        for obj in detections:
+            x1, y1, x2, y2 = obj["box"]
+            label = f'{obj["type"]} {obj["confidence"]}'
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
+            cv2.rectangle(frame, (x1, y1 - 20), (x1 + len(label)*10, y1), (255, 0, 255), -1)
+            cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
         
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
-        cv2.rectangle(frame, (x1, y1 - 20), (x1 + len(label)*10, y1), (255, 0, 255), -1)
-        cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-        
-    # Encode frame to JPEG
     ret, buffer = cv2.imencode('.jpg', frame)
     if not ret:
         raise HTTPException(status_code=500, detail="Failed to encode image")

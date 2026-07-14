@@ -7,15 +7,27 @@ SD-Hawk is a monorepo AI-powered surveillance system featuring a Next.js dashboa
 - **Python**: 3.10+ (Tested on 3.13)
 - **MongoDB**: A running MongoDB instance (local or Atlas)
 
-## Global Setup
-This project uses Turborepo to manage the monorepo. You can install all dependencies and run everything from the root folder!
+## Documentation
+- [User Guide (Camera Setup & AI Rules)](USER_GUIDE.md)
+- [System Architecture & Documentation](DOCUMENTATION.md)
+
+## Global Setup (Recommended)
+This project uses Turborepo to manage the monorepo. You can install all dependencies and run the entire stack (Frontend, Backend, and Vision Service) concurrently with just two commands from the root folder!
 
 ```bash
-# 1. Install all dependencies across all workspaces
+# 1. Install Node.js dependencies across all workspaces
 npm install
 
-# 2. Start the entire stack (Frontend, Backend, and Vision Service) concurrently
+# 2. IMPORTANT: You must manually setup Python for the Vision Service first!
+cd vision-service
+python -m venv .venv
+.venv\Scripts\activate     # (On Mac/Linux use: source .venv/bin/activate)
+pip install -r requirements.txt
+cd ..
+
+# 3. Start the entire stack concurrently
 npm run dev
+# (Note: The VERY FIRST time you run this, it will download the YOLOv8 AI model, which may take 1-3 minutes depending on your internet speed).
 ```
 
 ---

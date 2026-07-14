@@ -10,7 +10,7 @@ export const getRules = async (req, res) => {
 };
 
 export const createRule = async (req, res) => {
-  const { name, camera, objectType, ruleType, timeRange, includeSnapshot, severity, isActive } = req.body;
+  const { name, camera, objectType, ruleType, timeRange, includeSnapshot, severity, isActive, customPrompt, triggerZone } = req.body;
 
   try {
     const rule = await Rule.create({
@@ -22,7 +22,9 @@ export const createRule = async (req, res) => {
       timeRange,
       includeSnapshot,
       severity,
-      isActive
+      isActive,
+      customPrompt,
+      triggerZone
     });
     
     res.status(201).json(rule);
@@ -62,6 +64,13 @@ export const updateRule = async (req, res) => {
       rule.camera = req.body.camera || rule.camera;
       rule.objectType = req.body.objectType || rule.objectType;
       rule.ruleType = req.body.ruleType || rule.ruleType;
+      
+      if (req.body.customPrompt !== undefined) {
+        rule.customPrompt = req.body.customPrompt;
+      }
+      if (req.body.triggerZone !== undefined) {
+        rule.triggerZone = req.body.triggerZone;
+      }
       
       if (req.body.timeRange) {
         rule.timeRange.start = req.body.timeRange.start || rule.timeRange.start;

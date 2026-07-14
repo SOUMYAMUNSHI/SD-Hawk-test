@@ -1,5 +1,6 @@
 import Camera from '../models/Camera.model.js';
 import { io } from '../server.js';
+import { syncCamerasToPython } from '../services/vision.service.js';
 
 // @desc    Get all cameras
 // @route   GET /api/cameras
@@ -27,6 +28,9 @@ export const createCamera = async (req, res) => {
       type
     });
     
+    // Sync with Python
+    await syncCamerasToPython();
+
     io.emit('camera_added', camera);
     res.status(201).json(camera);
   } catch (error) {
@@ -91,6 +95,9 @@ export const deleteCamera = async (req, res) => {
       } catch(err) {
         console.error("Failed to delete attached rules", err);
       }
+
+      // Sync with Python
+      await syncCamerasToPython();
 
       io.emit('camera_deleted', req.params.id);
       res.json({ message: 'Camera removed' });

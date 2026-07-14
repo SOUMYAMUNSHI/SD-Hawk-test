@@ -178,7 +178,7 @@ export default function CamerasPage() {
               {/* Video Preview (Simulated for setup) */}
               <div className="relative aspect-video bg-neutral-950 border-b border-neutral-800 flex items-center justify-center overflow-hidden">
                  <img 
-                    src={`http://127.0.0.1:8000/video_feed?boxes=${camera.showBoundingBoxes ? '1' : '0'}`}
+                    src={`http://127.0.0.1:8000/video_feed?camera_id=${camera._id}&boxes=${camera.showBoundingBoxes ? '1' : '0'}`}
                     alt={camera.name}
                     className="w-full h-full object-cover opacity-60"
                     onError={(e) => {

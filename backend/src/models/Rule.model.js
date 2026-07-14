@@ -22,9 +22,20 @@ const ruleSchema = new mongoose.Schema(
     },
     ruleType: {
       type: String,
-      enum: ['Include', 'Exclude'],
+      enum: ['Include', 'Exclude', 'AI Custom'],
       default: 'Include',
-      description: 'Include: Alert ON objectType. Exclude: Alert on anything EXCEPT objectType.',
+      description: 'Include: Alert ON objectType. Exclude: Alert on anything EXCEPT objectType. AI Custom: Use Groq Vision.',
+    },
+    customPrompt: {
+      type: String,
+      default: '',
+      description: 'The prompt to send to Groq Vision API when using AI Custom rule type.',
+    },
+    triggerZone: {
+      x: { type: Number, default: 0 },
+      y: { type: Number, default: 0 },
+      width: { type: Number, default: 0 },
+      height: { type: Number, default: 0 },
     },
     timeRange: {
       start: { type: String, default: '00:00' }, // HH:mm format
