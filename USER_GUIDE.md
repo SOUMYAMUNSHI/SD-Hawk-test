@@ -62,15 +62,36 @@ An Advanced Rule combines the local Virtual Zone with the cloud-based **Groq Vis
 1. Click **+ Create New Rule**.
 2. Select your Target Camera.
 3. Select **Advanced: AI Custom Prompt** as the Rule Type.
-4. **Custom AI Prompt**: Type exactly what you want the AI to look for in plain English.
-   - *Example 1:* "Is the person in this image looking down at their phone instead of paying attention?"
-   - *Example 2:* "Did this customer walk past the register without paying?"
-   - *Example 3:* "Is there a weapon visible in this frame?"
+4. **Custom AI Prompt**: Type exactly what you want the AI to look for in plain English. (See the Real-World Scenarios section below for perfect examples!)
 5. **Draw Zone**: Click the **Draw Zone on Camera** button and draw a box over the area of interest (e.g., the checkout counter). 
 6. Click **Save Rule**.
 
 ### How Advanced Rules Work Behind the Scenes:
 1. The local software watches the Virtual Zone you drew.
-2. When *anything* enters that specific zone, it acts as a tripwire.
+2. When the *Target Object* enters that specific zone, it acts as a tripwire.
 3. The software instantly takes a high-resolution snapshot and sends it to the Groq Cloud AI along with your custom English prompt.
 4. Groq looks at the image, reads your question, and decides if it should trigger an alert. If yes, you get an email with the image and Groq's reasoning!
+
+---
+
+## 3. Real-World AI Custom Rule Scenarios
+
+To get the most out of SD-Hawk, you need to use the Dropdown (Target Object) as the Tripwire, and the Custom Prompt as the Filter.
+
+### Scenario 1: The Retail Store Checkout
+**Goal:** You want to know if a customer walks behind the employee checkout counter. However, you don't want an alert when your cashier is standing there.
+- **Target Object (Tripwire):** `person`
+- **Virtual Zone:** Draw a rectangle *only* over the floor space behind the cash register.
+- **Custom AI Prompt:** *"Is this person wearing the green employee uniform? If they are wearing the green uniform, return false. If they are wearing regular clothes, they are an unauthorized customer, so return true."*
+
+### Scenario 2: The Smart Home Driveway
+**Goal:** You want to be alerted if a strange car pulls into your driveway, but you don't want alerts when *your* red Honda Civic parks there.
+- **Target Object (Tripwire):** `car`
+- **Virtual Zone:** Draw a large rectangle over your driveway.
+- **Custom AI Prompt:** *"Look closely at the car in this image. Is it a Red Honda Civic? If it is a Red Honda Civic, return false because that is my car. If it is any other color or brand of vehicle, return true to alert me of an unknown visitor."*
+
+### Scenario 3: The Classroom Exam Monitor
+**Goal:** You want an alert if a student pulls out their phone during an exam.
+- **Target Object (Tripwire):** `cell phone`
+- **Virtual Zone:** Draw a large rectangle covering all the student desks.
+- **Custom AI Prompt:** *"Is someone holding this cell phone? If the cell phone is just sitting flat on a desk, return false. If a student is actively holding it in their hand or looking at it, return true because they are cheating."*

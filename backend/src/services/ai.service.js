@@ -53,18 +53,33 @@ export const evaluateCustomPrompt = async (base64Image, customPrompt) => {
           ]
         }
       ],
-      model: 'llama-3.2-90b-vision-preview',
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       temperature: 0.2,
       max_tokens: 150,
     });
 
     const responseText = chatCompletion.choices[0]?.message?.content || '{}';
-    // Clean up response if the model returned markdown code blocks
-    const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    console.log('Groq RAW Response:', responseText);
     
-    return JSON.parse(jsonStr);
+    // Extract JSON object using regex to handle conversational fluff from LLMs
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    // Fallback: If the AI completely ignored JSON formatting and just gave text
+    const textLower = responseText.toLowerCase();
+    if (textLower.includes('true') || textLower.includes('yes') || textLower.includes('alert')) {
+      return { alert: true, reason: responseText.trim() };
+    } else if (textLower.includes('false') || textLower.includes('no')) {
+      return { alert: false, reason: responseText.trim() };
+    }
+    
+    throw new Error("Could not parse response: " + responseText);
   } catch (error) {
-    console.error('Groq Vision AI Error:', error);
-    return { alert: true, reason: 'Error evaluating vision model. Defaulting to alert.' };
+    console.error('Groq Vision AI Error:', error.message || error);
+    // CRITICAL: If the Groq API fails (e.g. Rate Limit Exceeded), we must default to FALSE.
+    // If we default to true, the user will be spammed with an email every 60 seconds just telling them the API is down!
+    return { alert: false, reason: 'API Error: ' + (error.message || 'Unknown') };
   }
 };

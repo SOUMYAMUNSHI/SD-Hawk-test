@@ -122,15 +122,11 @@ export const startPolling = () => {
               const ruleType = rule.ruleType || 'Include';
               let ruleViolatingDetection = null;
 
-              if (ruleType === 'Include') {
+              if (ruleType === 'Include' || ruleType === 'AI Custom') {
                 ruleViolatingDetection = validDetections.find(d => d.type === rule.objectType);
               } else if (ruleType === 'Exclude') {
                 if (validDetections.length > 0) {
                   ruleViolatingDetection = validDetections.find(d => d.type !== rule.objectType);
-                }
-              } else if (ruleType === 'AI Custom') {
-                if (validDetections.length > 0) {
-                  ruleViolatingDetection = validDetections[0]; // Any object crossing triggers Groq evaluation
                 }
               }
 

@@ -24,6 +24,7 @@ export default function RulesPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [isDrawingZone, setIsDrawingZone] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [drawStart, setDrawStart] = useState(null);
   const [drawCurrent, setDrawCurrent] = useState(null);
@@ -335,19 +336,20 @@ export default function RulesPage() {
                 const y = (e.clientY - rect.top) / rect.height;
                 setDrawStart({ x, y });
                 setDrawCurrent({ x, y });
+                setIsDragging(true);
               }}
               onMouseMove={(e) => {
-                if (!drawStart) return;
+                if (!drawStart || !isDragging) return;
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                 const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
                 setDrawCurrent({ x, y });
               }}
               onMouseUp={() => {
-                // Done dragging
+                setIsDragging(false);
               }}
               onMouseLeave={() => {
-                // Done dragging
+                setIsDragging(false);
               }}
             >
               <img 
