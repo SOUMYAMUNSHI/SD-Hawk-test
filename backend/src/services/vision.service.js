@@ -145,6 +145,7 @@ export const startPolling = () => {
                          const buffer = await snapRes.arrayBuffer();
                          const filename = `snap_${Date.now()}.jpg`;
                          const publicDir = path.join(__dirname, '..', '..', 'public', 'snapshots');
+                         await fs.promises.mkdir(publicDir, { recursive: true });
                          localSnapshotPath = path.join(publicDir, filename);
                          await fs.promises.writeFile(localSnapshotPath, Buffer.from(buffer));
                          snapshotUrl = `/snapshots/${filename}`;
