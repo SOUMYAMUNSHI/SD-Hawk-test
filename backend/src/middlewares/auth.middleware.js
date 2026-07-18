@@ -21,12 +21,12 @@ export const protect = async (req, res, next) => {
 
   // Auto-login for local MVP testing
   if (!token) {
-    const firstUser = await User.findOne();
-    if (firstUser) {
-      req.user = firstUser;
-      return next();
-    } else {
-      return res.status(401).json({ message: 'Not authorized, no token and no users in DB' });
+    let firstUser = await User.findOne();
+    if (!firstUser) {
+      console.log('No users found in DB. Auto-creating default Admin user for local testing.');
+      firstUser = await User.create({ name: 'Admin', email: 'admin@sdhawk.com', password: 'password123' });
     }
+    req.user = firstUser;
+    return next();
   }
 };
