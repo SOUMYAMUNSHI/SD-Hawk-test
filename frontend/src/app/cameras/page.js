@@ -19,7 +19,7 @@ export default function CamerasPage() {
     try {
       const res = await fetch('http://localhost:5000/api/cameras');
       const data = await res.json();
-      setCameras(data);
+      setCameras(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch cameras:', error);
     } finally {
