@@ -18,7 +18,11 @@ class CameraStream:
         if isinstance(source, str) and source.isdigit():
             source = int(source)
 
-        self.capture = cv2.VideoCapture(source)
+        import platform
+        if isinstance(source, int) and platform.system() == 'Windows':
+            self.capture = cv2.VideoCapture(source, cv2.CAP_DSHOW)
+        else:
+            self.capture = cv2.VideoCapture(source)
         if not self.capture.isOpened():
             print(f"Failed to open camera: {self.source}")
             return False
