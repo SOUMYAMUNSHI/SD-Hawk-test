@@ -13,12 +13,16 @@ export default function Dashboard() {
   const [cameras, setCameras] = useState([]);
 
   const [selectedCamera, setSelectedCamera] = useState(null);
+  const [host, setHost] = useState('localhost');
 
   useEffect(() => {
+    setHost(window.location.hostname);
+    const currentHost = window.location.hostname;
+    
     // 1. Fetch Backend HTTP Health
     const fetchHealth = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/health');
+        const res = await fetch(`http://${currentHost}:5000/api/health`);
         if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
         setApiStatus({ loading: false, data, error: null });
@@ -31,7 +35,7 @@ export default function Dashboard() {
     // 1.5 Fetch Camera to get display settings
     const fetchCamera = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/cameras');
+        const res = await fetch(`http://${currentHost}:5000/api/cameras`);
         const data = await res.json();
         if (Array.isArray(data)) {
           setCameras(data);
@@ -46,6 +50,7 @@ export default function Dashboard() {
     fetchCamera();
 
     // 2. Connect to WebSockets for live AI updates
+    socket.io.uri = `http://${currentHost}:5000`;
     socket.connect();
     
     socket.on('new_detection', (data) => {
@@ -184,7 +189,7 @@ export default function Dashboard() {
             
             <div className="aspect-video bg-black relative">
               <img 
-                src={`http://127.0.0.1:8000/video_feed?camera_id=${cam._id}&boxes=${cam.showBoundingBoxes ? '1' : '0'}`} 
+                src={`http://${host}:8000/video_feed?camera_id=${cam._id}&boxes=${cam.showBoundingBoxes ? '1' : '0'}`} 
                 alt={`Feed for ${cam.name}`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -240,7 +245,7 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
                 <img 
-                  src={`http://127.0.0.1:8000/video_feed?camera_id=${selectedCamera._id}&boxes=${selectedCamera.showBoundingBoxes ? '1' : '0'}`} 
+                  src={`http://${host}:8000/video_feed?camera_id=${selectedCamera._id}&boxes=${selectedCamera.showBoundingBoxes ? '1' : '0'}`} 
                   alt="Expanded Feed"
                   className="w-full h-full object-contain"
                   onError={(e) => {

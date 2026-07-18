@@ -25,6 +25,7 @@ export default function RulesPage() {
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [isDrawingZone, setIsDrawingZone] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [host, setHost] = useState('localhost');
 
   const [drawStart, setDrawStart] = useState(null);
   const [drawCurrent, setDrawCurrent] = useState(null);
@@ -41,14 +42,15 @@ export default function RulesPage() {
   });
 
   useEffect(() => {
-    fetchData();
+    setHost(window.location.hostname);
+    fetchData(window.location.hostname);
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (currentHost = host) => {
     try {
       const [rulesRes, camsRes] = await Promise.all([
-        fetch('http://localhost:5000/api/rules'),
-        fetch('http://localhost:5000/api/cameras')
+        fetch(`http://${currentHost}:5000/api/rules`),
+        fetch(`http://${currentHost}:5000/api/cameras`)
       ]);
       const rulesData = await rulesRes.json();
       const camsData = await camsRes.json();
@@ -68,7 +70,7 @@ export default function RulesPage() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this rule?')) return;
     try {
-      await fetch(`http://localhost:5000/api/rules/${id}`, { method: 'DELETE' });
+      await fetch(`http://${host}:5000/api/rules/${id}`, { method: 'DELETE' });
       setRules(rules.filter(r => r._id !== id));
     } catch (error) {
       console.error('Failed to delete rule:', error);
@@ -78,7 +80,7 @@ export default function RulesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingRuleId ? `http://localhost:5000/api/rules/${editingRuleId}` : 'http://localhost:5000/api/rules';
+      const url = editingRuleId ? `http://${host}:5000/api/rules/${editingRuleId}` : `http://${host}:5000/api/rules`;
       const method = editingRuleId ? 'PUT' : 'POST';
       
       const res = await fetch(url, {
@@ -353,7 +355,7 @@ export default function RulesPage() {
               }}
             >
               <img 
-                src={`http://127.0.0.1:8000/video_feed?camera_id=${newRule.camera}&boxes=0`} 
+                src={`http://${host}:8000/video_feed?camera_id=${newRule.camera}&boxes=0`} 
                 alt="Camera Feed"
                 className="w-full h-full object-fill pointer-events-none"
                 onError={(e) => {

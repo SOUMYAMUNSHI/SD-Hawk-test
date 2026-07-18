@@ -10,14 +10,16 @@ export default function CamerasPage() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [newCamera, setNewCamera] = useState({ name: '', source: '0', type: 'Webcam' });
+  const [host, setHost] = useState('localhost');
 
   useEffect(() => {
-    fetchCameras();
+    setHost(window.location.hostname);
+    fetchCameras(window.location.hostname);
   }, []);
 
-  const fetchCameras = async () => {
+  const fetchCameras = async (currentHost = host) => {
     try {
-      const res = await fetch('http://localhost:5000/api/cameras');
+      const res = await fetch(`http://${currentHost}:5000/api/cameras`);
       const data = await res.json();
       setCameras(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -30,7 +32,7 @@ export default function CamerasPage() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/cameras', {
+      const res = await fetch(`http://${host}:5000/api/cameras`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCamera)
@@ -50,7 +52,7 @@ export default function CamerasPage() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this camera? All attached rules will also be deleted!')) return;
     try {
-      await fetch(`http://localhost:5000/api/cameras/${id}`, { method: 'DELETE' });
+      await fetch(`http://${host}:5000/api/cameras/${id}`, { method: 'DELETE' });
       setCameras(cameras.filter(c => c._id !== id));
     } catch (error) {
       console.error('Failed to delete camera:', error);
@@ -66,7 +68,7 @@ export default function CamerasPage() {
         c._id === camera._id ? { ...c, [setting]: updatedValue } : c
       ));
 
-      await fetch(`http://localhost:5000/api/cameras/${camera._id}`, {
+      await fetch(`http://${host}:5000/api/cameras/${camera._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [setting]: updatedValue })
@@ -90,7 +92,7 @@ export default function CamerasPage() {
           <button onClick={() => setIsAdding(!isAdding)} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-neutral-950 font-semibold rounded-lg transition-colors">
             {isAdding ? 'Cancel' : '+ Add Camera'}
           </button>
-          <button onClick={fetchCameras} className="p-2 bg-neutral-900 border border-neutral-800 rounded-lg hover:bg-neutral-800 transition-colors">
+          <button onClick={() => fetchCameras()} className="p-2 bg-neutral-900 border border-neutral-800 rounded-lg hover:bg-neutral-800 transition-colors">
             <RefreshCw size={20} className={loading ? 'animate-spin text-emerald-500' : 'text-neutral-400'} />
           </button>
         </div>
@@ -178,7 +180,7 @@ export default function CamerasPage() {
               {/* Video Preview (Simulated for setup) */}
               <div className="relative aspect-video bg-neutral-950 border-b border-neutral-800 flex items-center justify-center overflow-hidden">
                  <img 
-                    src={`http://127.0.0.1:8000/video_feed?camera_id=${camera._id}&boxes=${camera.showBoundingBoxes ? '1' : '0'}`}
+                    src={`http://${host}:8000/video_feed?camera_id=${camera._id}&boxes=${camera.showBoundingBoxes ? '1' : '0'}`}
                     alt={camera.name}
                     className="w-full h-full object-cover opacity-60"
                     onError={(e) => {
