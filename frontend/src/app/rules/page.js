@@ -52,8 +52,8 @@ export default function RulesPage() {
       ]);
       const rulesData = await rulesRes.json();
       const camsData = await camsRes.json();
-      setRules(rulesData);
-      setCameras(camsData);
+      setRules(Array.isArray(rulesData) ? rulesData : []);
+      setCameras(Array.isArray(camsData) ? camsData : []);
       
       if (camsData.length > 0 && !newRule.camera) {
         setNewRule(prev => ({ ...prev, camera: camsData[0]._id }));

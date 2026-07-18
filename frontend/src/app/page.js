@@ -33,8 +33,12 @@ export default function Dashboard() {
       try {
         const res = await fetch('http://localhost:5000/api/cameras');
         const data = await res.json();
-        setCameras(data);
-        if (data.length > 0) setCamera(data[0]);
+        if (Array.isArray(data)) {
+          setCameras(data);
+          if (data.length > 0) setCamera(data[0]);
+        } else {
+          setCameras([]);
+        }
       } catch (e) {
         console.error('Failed to fetch cameras');
       }
