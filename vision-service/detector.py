@@ -1,6 +1,13 @@
 import torch
 from ultralytics import YOLO
 import ultralytics.nn.tasks
+import sys
+import types
+
+# MOCK CPUINFO: Prevent YOLO from crashing on older Intel or unsupported AMD CPUs
+mock_cpuinfo = types.ModuleType("cpuinfo")
+mock_cpuinfo.get_cpu_info = lambda: {"brand_raw": "Unknown CPU"}
+sys.modules["cpuinfo"] = mock_cpuinfo
 
 # Fix for PyTorch 2.6 weights_only loading security change which crashes YOLO
 _original_load = torch.load
