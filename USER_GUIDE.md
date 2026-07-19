@@ -13,7 +13,7 @@ SD-Hawk supports almost any type of camera feed, powered by OpenCV in the backen
 2. Click the **+ Add Camera** button in the top right.
 3. Fill out the form:
    - **Camera Name**: A recognizable name (e.g., "Front Door", "Cash Register").
-   - **Camera Type**: Select Webcam, IP, or CCTV.
+   - **Camera Type**: Select Webcam, IP, or CCTV. *(Note: This is purely for visual organization on the dashboard. The backend will automatically handle the stream based entirely on the source).*
    - **Source (ID or URL)**: This is the most important field. See below for what to put here depending on your camera.
 4. Click **Save Camera**.
 
@@ -25,17 +25,31 @@ For webcams directly connected to the computer running the SD-Hawk software, the
 - If you have multiple webcams plugged in, try `1`, `2`, etc., until you find the right one.
 - *Tip for testing:* You can add multiple cameras with source `0` to test the multi-camera dashboard layout!
 
-#### B. IP Cameras & Wi-Fi Cameras
-Most modern IP cameras provide an RTSP (Real Time Streaming Protocol) URL. You can usually find this in your camera's mobile app or web interface, or by searching for your camera model online.
-- **Source**: `rtsp://username:password@camera_ip_address:554/stream1`
-- Example: `rtsp://admin:admin1234@192.168.1.100:554/cam/realmonitor?channel=1&subtype=0`
+#### B. IP Cameras & Wi-Fi Cameras (Standalone)
+For standalone IP or Wi-Fi cameras (e.g., Reolink, Tapo, Amcrest) that connect directly to your router, you will use their individual RTSP URLs. 
+- **Example format**: `rtsp://username:password@camera_ip_address:554/stream1`
+- **Example**: `rtsp://admin:admin%40123@192.168.1.50:554/stream1`
+
+> [!IMPORTANT]  
+> If your camera password contains special characters like `@` or `#`, you **MUST** URL-encode them in the link. For example, if your password is `admin@123`, you must write it as `admin%40123` in the RTSP link. Failing to do so will cause the connection to fail!
 
 #### C. CCTV / NVR / DVR Systems (e.g., CP Plus, Dahua, Hikvision)
-If you have a hardwired CCTV system connected to a central NVR/DVR box, you connect to the *box* itself, specifying which camera channel you want to view.
-- **CP Plus Example**: `rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=0` 
-  - Change `channel=1` to `channel=2` for the second camera, etc.
-- **Hikvision Example**: `rtsp://admin:password@192.168.1.108:554/Streaming/Channels/101`
-  - Change `101` to `201` for the second camera.
+If you have a hardwired CCTV system connected to a central NVR/DVR box, you connect to the *box* itself. You must replace the IP address in the link with the actual local IP address of your DVR box (e.g., `192.168.0.100`).
+
+**How to add multiple cameras (e.g., 5 cameras from one DVR):**
+You will add 5 separate cameras in the SD-Hawk Camera Manager. Every camera will use the exact same IP address, username, and password in the RTSP link. The *only* thing you change is the **channel number** at the end of the link!
+
+- **CP Plus / Dahua Example**:
+  - Camera 1: `rtsp://admin:admin%40123@192.168.0.100:554/cam/realmonitor?channel=1&subtype=0`
+  - Camera 2: `rtsp://admin:admin%40123@192.168.0.100:554/cam/realmonitor?channel=2&subtype=0`
+  - Camera 3: `rtsp://admin:admin%40123@192.168.0.100:554/cam/realmonitor?channel=3&subtype=0`
+  - *(And so on...)*
+
+- **Hikvision Example**:
+  - Camera 1: `rtsp://admin:admin%40123@192.168.0.100:554/Streaming/Channels/101`
+  - Camera 2: `rtsp://admin:admin%40123@192.168.0.100:554/Streaming/Channels/201`
+  - Camera 3: `rtsp://admin:admin%40123@192.168.0.100:554/Streaming/Channels/301`
+  - *(And so on...)*
 
 *Note: Ensure your SD-Hawk computer is on the same local Wi-Fi/Ethernet network as your CCTV box!*
 
