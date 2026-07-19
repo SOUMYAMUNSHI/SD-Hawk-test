@@ -21,6 +21,8 @@ class CameraStream:
         import platform
         if isinstance(source, int) and platform.system() == 'Windows':
             self.capture = cv2.VideoCapture(source, cv2.CAP_DSHOW)
+        elif isinstance(source, str) and (source.startswith('rtsp://') or source.startswith('http://')):
+            self.capture = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
         else:
             self.capture = cv2.VideoCapture(source)
         if not self.capture.isOpened():
