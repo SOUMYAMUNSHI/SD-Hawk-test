@@ -10,10 +10,10 @@ import {
   ListChecks, 
   Settings, 
   Menu,
-  X,
-  Bird
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Logo from './Logo';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -30,10 +30,7 @@ export default function DashboardLayout({ children }) {
       
       {/* Mobile Top Nav */}
       <div className="lg:hidden absolute top-0 left-0 right-0 h-16 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-4 z-50">
-        <div className="flex items-center gap-2 text-emerald-500">
-          <Bird size={24} />
-          <span className="font-bold text-xl text-white tracking-wide">SD-HAWK</span>
-        </div>
+        <Logo className="w-8 h-8" layout="horizontal" showText={true} />
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 text-neutral-400 hover:text-white"
@@ -75,9 +72,8 @@ export default function DashboardLayout({ children }) {
 
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex flex-col w-72 bg-neutral-900 border-r border-neutral-800 p-6 h-full">
-        <div className="flex items-center gap-3 text-emerald-500 mb-10 pl-2">
-          <Bird size={32} />
-          <span className="font-bold text-2xl text-white tracking-wider">SD-HAWK</span>
+        <div className="mb-8 mt-2 flex justify-center w-full">
+          <Logo showText={true} />
         </div>
         
         <nav className="flex-1 flex flex-col gap-2">

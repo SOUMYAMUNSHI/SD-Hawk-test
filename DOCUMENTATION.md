@@ -38,10 +38,20 @@ Instead of sending every frame to a cloud API, all baseline detection runs 100% 
 
 ### Stage 2: The Genius Path (Groq Vision LLM)
 If the crossed rule was configured as an **"AI Custom Prompt"**:
-1. Node.js instantly fetches a high-resolution snapshot from Python (`/snapshot?camera_id=...`).
-2. Node.js sends the snapshot (base64) along with the user's custom English prompt (e.g., *"Is this student looking down?"*) to Groq's `llama-3.2-90b-vision-preview` model.
-3. Groq evaluates the complex context and returns a pure JSON response `{"alert": true, "reason": "The student is holding a phone."}`.
-4. Node.js processes this response, logs the AI summary to the database, and dispatches a rich HTML email alert.
+1. Node.js checks its **Concurrency Lock** to ensure the specific camera rule isn't already actively waiting for an AI response.
+2. Node.js instantly fetches a high-resolution snapshot from Python (`/snapshot?camera_id=...`).
+3. Node.js sends the snapshot (base64) along with the user's custom English prompt to Groq (utilizing advanced reasoning models like `qwen-2.5-vl-72b`).
+4. Because reasoning models output raw thoughts before their final answer, Node.js runs a strict Regex to completely nuke any `<think>...</think>` blocks, ensuring the parser cleanly extracts the JSON payload.
+5. Node.js evaluates the clean `{"alert": true}` response, logs the AI summary to the database, and dispatches the alert pipeline.
+
+---
+
+## 5. Notification Pipeline & Rate Limiting
+
+To ensure the system is effective in real-world scenarios without becoming a spam vector, SD-Hawk utilizes a robust alert pipeline:
+
+- **Multi-Channel Alerts:** When a rule violation is confirmed (either mathematically or via AI), the system dispatches both a rich HTML Email (via Nodemailer) and an instant SMS text message (via Twilio).
+- **60-Second Cooldowns:** To prevent alert storms (e.g., 30 emails sent while a person is continuously standing in a restricted zone), the system implements a strict 60-second debounce per rule. This cooldown timer *only* starts if an alert is successfully fired. If the AI determines there is no violation, the system continues to check every second without penalty until the violation actually occurs.
 
 ---
 
