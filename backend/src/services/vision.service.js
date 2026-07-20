@@ -57,12 +57,16 @@ export const syncCamerasToPython = async () => {
   }
 };
 
+let isProcessingTick = false;
+
 export const startPolling = () => {
   if (isPolling) return;
   isPolling = true;
   console.log('Started polling Python Vision Service...');
 
   pollingInterval = setInterval(async () => {
+    if (isProcessingTick) return;
+    isProcessingTick = true;
     try {
       const response = await fetch('http://127.0.0.1:8000/detect');
       const data = await response.json();
@@ -173,8 +177,9 @@ export const startPolling = () => {
                     aiSummary = await generateSecurityAlert(rule, ruleViolatingDetection);
                   }
 
-                  // Update cooldown because an alert is firing
+                  // 🚨 Only trigger the 60-second cooldown if an alert is ACTUALLY being sent!
                   lastAlertTime.set(rule._id.toString(), Date.now());
+
                   console.log(`🚨 Rule Broken: ${rule.name}. Triggering Alert...`);
 
                   await Event.create({
@@ -207,6 +212,8 @@ export const startPolling = () => {
       } else {
          console.error('Vision Polling Error:', error);
       }
+    } finally {
+      isProcessingTick = false;
     }
   }, 1000); // Poll every 1 second
 };

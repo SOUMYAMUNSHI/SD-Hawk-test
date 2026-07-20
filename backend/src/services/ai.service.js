@@ -53,33 +53,29 @@ export const evaluateCustomPrompt = async (base64Image, customPrompt) => {
           ]
         }
       ],
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: 'qwen/qwen3.6-27b',
       temperature: 0.2,
-      max_tokens: 150,
+      max_tokens: 1500,
     });
 
     const responseText = chatCompletion.choices[0]?.message?.content || '{}';
     console.log('Groq RAW Response:', responseText);
     
-    // Extract JSON object using regex to handle conversational fluff from LLMs
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    // 1. Strip out the reasoning block entirely so it doesn't confuse the JSON parser
+    const cleanResponse = responseText.replace(/<think>[\s\S]*?<\/think>/g, '');
+    
+    // 2. Extract JSON object using regex
+    const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
 
-    // Fallback: If the AI completely ignored JSON formatting and just gave text
-    const textLower = responseText.toLowerCase();
-    if (textLower.includes('true') || textLower.includes('yes') || textLower.includes('alert')) {
-      return { alert: true, reason: responseText.trim() };
-    } else if (textLower.includes('false') || textLower.includes('no')) {
-      return { alert: false, reason: responseText.trim() };
-    }
-    
-    throw new Error("Could not parse response: " + responseText);
+    // If it STILL fails to output JSON, we do NOT aggressively fallback to scanning for "yes". 
+    // We just safely default to false to prevent false alarms.
+    throw new Error("AI did not output valid JSON format.");
   } catch (error) {
     console.error('Groq Vision AI Error:', error.message || error);
-    // CRITICAL: If the Groq API fails (e.g. Rate Limit Exceeded), we must default to FALSE.
-    // If we default to true, the user will be spammed with an email every 60 seconds just telling them the API is down!
-    return { alert: false, reason: 'API Error: ' + (error.message || 'Unknown') };
+    // CRITICAL: If the Groq API fails or parsing fails, we default to FALSE to avoid spam.
+    return { alert: false, reason: 'API/Parsing Error: ' + (error.message || 'Unknown') };
   }
 };
