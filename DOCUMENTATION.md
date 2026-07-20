@@ -50,7 +50,7 @@ If the crossed rule was configured as an **"AI Custom Prompt"**:
 
 To ensure the system is effective in real-world scenarios without becoming a spam vector, SD-Hawk utilizes a robust alert pipeline:
 
-- **Multi-Channel Alerts:** When a rule violation is confirmed (either mathematically or via AI), the system dispatches both a rich HTML Email (via Nodemailer) and an instant SMS text message (via Twilio).
+- **Rich Email Alerts:** When a rule violation is confirmed (either mathematically or via AI), the system dispatches a rich HTML Email (via Nodemailer) to the configured administrator.
 - **60-Second Cooldowns:** To prevent alert storms (e.g., 30 emails sent while a person is continuously standing in a restricted zone), the system implements a strict 60-second debounce per rule. This cooldown timer *only* starts if an alert is successfully fired. If the AI determines there is no violation, the system continues to check every second without penalty until the violation actually occurs.
 
 ---
